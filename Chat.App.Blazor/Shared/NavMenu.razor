@@ -1,0 +1,61 @@
+﻿@using Chat.App.Blazor.Models;
+@using Microsoft.AspNetCore.Identity;
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<User> userManager;
+
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Contacts</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            @foreach(var contact in UserContacts)
+            {
+                <a class="nav-link" href="chat/@contact.Friend.UserName">
+                    <span class="oi oi-home" aria-hidden="true"></span> @contact.Friend.UserName
+                </a>
+            }
+           
+        </div>
+        
+    </nav>
+</div>
+
+@code {
+
+
+
+
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+    string? currentUser = string.Empty;
+    List<Contact>? UserContacts = new();
+
+    protected async override Task OnInitializedAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authenticationState.User;
+        currentUser = user?.Identity?.Name;
+        var foundUser =  await userManager.FindByNameAsync(currentUser);
+
+        UserContacts = foundUser?.Contacts;
+    }
+
+    
+
+}

@@ -1,0 +1,34 @@
+﻿@inherits LayoutComponentBase
+
+@inject NavigationManager NavigationManager
+@code{
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    protected async override Task OnInitializedAsync()
+    {
+        var authenticationState = await authenticationStateTask;
+
+        if (!authenticationState.User.Identity.IsAuthenticated)
+        {
+
+            NavigationManager.NavigateTo($"/identity/account/login", forceLoad: true);
+        }
+    }
+}
+<PageTitle>Contacts</PageTitle>
+ <AuthorizeView>
+        <Authorized>
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        @Body
+    </main>
+</div>
+    </Authorized>
+    <NotAuthorized>
+        <p>User is not authorized.</p>
+    </NotAuthorized>
+</AuthorizeView>

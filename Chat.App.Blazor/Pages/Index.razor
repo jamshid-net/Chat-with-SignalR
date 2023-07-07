@@ -1,0 +1,31 @@
+﻿@page "/chat/{Username}"
+@using Microsoft.AspNetCore.SignalR.Client;
+@inject NavigationManager NavigationManager;
+
+
+@code {
+    [Parameter]
+    public string? Username { get; set; }
+
+    
+
+}
+<PageTitle>Hello</PageTitle>
+<div class="navbar navbar-dark d-flex justify-content-center bg-dark">
+    <a class="navbar-brand">@Username</a>
+</div>
+
+<article class="content px-4">
+   <div class="container border border-dark ">
+        <div class="resizable-container">
+            
+
+        </div>
+   </div>
+   <div class="content px-2">
+        
+       
+   </div>
+
+</article>
+
