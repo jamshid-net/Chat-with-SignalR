@@ -68,7 +68,7 @@ a, .btn-link {
     }
 
 .resizable-container {
-    height: 75vh; /* Adjust this value to set the initial height (e.g., 50% of viewport height) */
+    height: 70vh; /* Adjust this value to set the initial height (e.g., 50% of viewport height) */
     
     overflow: auto;
 }

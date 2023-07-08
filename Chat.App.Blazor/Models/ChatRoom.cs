@@ -8,8 +8,8 @@ public class ChatRoom
     public DateTime SentTime { get; set; }
     
     public string SenderId { get; set; }
-    public virtual User? Sender { get; set; }
+    public virtual User? Sender { get; set; } =new User();
    
     public string ReceiverId { get; set; }
-    public virtual User? Receiver { get; set; }
+    public virtual User? Receiver { get; set; } = new User();
 }

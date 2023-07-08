@@ -1,7 +1,20 @@
 ﻿@inherits LayoutComponentBase
-
 @inject NavigationManager NavigationManager
-@code{
+
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<PageTitle>Contacts</PageTitle>
+<MudLayout>
+    <NavMenu />
+    <MudMainContent>
+
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+@code {
     [CascadingParameter]
     private Task<AuthenticationState> authenticationStateTask { get; set; }
     protected async override Task OnInitializedAsync()
@@ -14,21 +27,5 @@
             NavigationManager.NavigateTo($"/identity/account/login", forceLoad: true);
         }
     }
+   
 }
-<PageTitle>Contacts</PageTitle>
- <AuthorizeView>
-        <Authorized>
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        @Body
-    </main>
-</div>
-    </Authorized>
-    <NotAuthorized>
-        <p>User is not authorized.</p>
-    </NotAuthorized>
-</AuthorizeView>

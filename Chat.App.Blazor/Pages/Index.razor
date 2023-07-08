@@ -1,31 +1,130 @@
-﻿@page "/chat/{Username}"
+﻿@page "/chat/{userId}"
+
+@using Chat.App.Blazor.Data;
+@using Chat.App.Blazor.Interfaces;
 @using Microsoft.AspNetCore.SignalR.Client;
 @inject NavigationManager NavigationManager;
-
+@inject ICurrentUser currentUser;
+@inject UserManager<User> usermanager;
+@inject ApplicationDbContext appdbContext;
+@implements IAsyncDisposable
 
 @code {
     [Parameter]
-    public string? Username { get; set; }
+    public string? userId { get; set; }
 
-    
+    private List<ChatRoom> messages = new();
+    protected EditContext editContext;
+    private string UserName = string.Empty;
+    private bool UserIsFound = false;
+
+    private ChatRoom chatModel;
+    private HubConnection? hubConnection;
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(userId))
+        {
+            try
+            {
+                var foundUser = await usermanager.FindByIdAsync(userId);
+                if (foundUser is not null)
+                {
+                    UserIsFound = true;
+                    UserName = foundUser.UserName;
+                    chatModel = new ChatRoom()
+                    {
+                        ChatRoomId = Guid.NewGuid(),
+                        SentTime = DateTime.Now,
+                        SenderId = currentUser.UserId,
+                        ReceiverId = foundUser.Id
+
+                    };
+
+
+                }
+            }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine(ex.Message);
+            }
+            hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
+            .Build();
+
+            hubConnection.On<ChatRoom>("ReceiveMessage", chatroom =>
+            {
+                messages.Add(chatroom);
+                InvokeAsync(StateHasChanged);
+            });
+            await hubConnection.StartAsync();
+            editContext = new EditContext(chatModel);
+        }
+    }
+    private async Task Send(EditContext context)
+    {
+        var chatRoom = context.Model as ChatRoom;
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendMessage", chatRoom);
+            chatModel.Content = string.Empty;
+        }
+    }
+
+
+
+    public bool IsConnected =>
+       hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+
 
 }
 <PageTitle>Hello</PageTitle>
-<div class="navbar navbar-dark d-flex justify-content-center bg-dark">
-    <a class="navbar-brand">@Username</a>
-</div>
+@if (UserIsFound)
+{
+    <div class="navbar navbar-dark d-flex justify-content-center bg-dark">
+        <a class="navbar-brand">@UserName</a>
+    </div>
 
-<article class="content px-4">
-   <div class="container border border-dark ">
-        <div class="resizable-container">
-            
+    <article class="content px-4">
 
-        </div>
-   </div>
-   <div class="content px-2">
-        
-       
-   </div>
+        <MudPaper Width="100%" class="resizable-container mb-2">
+            @foreach(var message in messages)
+            {
+                <MudText Typo="Typo.h4">@message.Content</MudText>
+              
+            }
+        </MudPaper>
 
-</article>
+        <MudPaper Height="110px" Width="100%">
+            <MudContainer Fixed="true">
+                <EditForm Model="@chatModel" OnSubmit="Send">
+                    <div class="d-flex flex-grow-1 gap-4">
+
+                        <MudTextField  @bind-Value="@chatModel.Content" Label="Message" Variant="Variant.Outlined"></MudTextField>
+                        <MudButton Variant="Variant.Filled" Disabled="@(!IsConnected)" EndIcon="@Icons.Material.Filled.Send" ButtonType="ButtonType.Submit" Color="Color.Primary">Send</MudButton>
+                    </div>
+                </EditForm>
+            </MudContainer>
+        </MudPaper>
+
+    </article>
+}
+else
+{
+    <div class="navbar navbar-dark d-flex justify-content-center bg-dark">
+        <a class="navbar-brand">Chat not found</a>
+    </div>
+}
+
 

@@ -1,10 +1,14 @@
 using Chat.App.Blazor.Data;
 using Chat.App.Blazor.Hubs;
+using Chat.App.Blazor.Interfaces;
+using Chat.App.Blazor.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor;
+using MudBlazor.Services;
 
 namespace Chat.App.Blazor;
 public class Program
@@ -14,12 +18,14 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
      
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-        // Add services to the container.
+      
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
         builder.Services.AddDataConfiguration(builder.Configuration);
         builder.Services.AddSignalR();
-
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddMudServices(c => { c.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight; });
+        builder.Services.AddScoped<ICurrentUser, CurrentUser>();
         builder.Services.AddResponseCompression(options =>
         {
             options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(

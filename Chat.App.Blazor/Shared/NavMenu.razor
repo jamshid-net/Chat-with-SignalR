@@ -2,60 +2,60 @@
 @using Microsoft.AspNetCore.Identity;
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject UserManager<User> userManager;
-
-
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Contacts</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
 
 
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            @foreach(var contact in UserContacts)
+
+
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@DrawerToggle" />
+    <MudSpacer />
+    
+    <MudSwitch @bind-Checked="@_isDarkMode" ThumbIcon="@(_isDarkMode==true ? Icons.Material.Filled.DarkMode : Icons.Material.Filled.LightMode)" ThumbIconColor="@(_isDarkMode==true ? Color.Success : Color.Error)"></MudSwitch>
+        <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Link="https://github.com/MudBlazor/MudBlazor" Target="_blank" />
+    </MudAppBar>
+    <MudDrawer @bind-Open="@_drawerOpen" Elevation="1">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h6">Chat</MudText>
+        </MudDrawerHeader>
+        <MudNavMenu>
+            @foreach (var contact in UserContacts)
             {
-                <a class="nav-link" href="chat/@contact.Friend.UserName">
-                    <span class="oi oi-home" aria-hidden="true"></span> @contact.Friend.UserName
-                </a>
+                <MudNavLink Href="@("chat/"+@contact.Friend.Id)" Icon="@Icons.Material.Outlined.Dashboard">
+                    @contact.Friend.UserName
+                </MudNavLink>
             }
-           
-        </div>
-        
-    </nav>
-</div>
+        </MudNavMenu>
+    </MudDrawer>
+
+
 
 @code {
 
-
-
-
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
     string? currentUser = string.Empty;
     List<Contact>? UserContacts = new();
+
+    private MudTheme _theme = new();
+    private bool _isDarkMode;
+    bool _drawerOpen = false;
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+
 
     protected async override Task OnInitializedAsync()
     {
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authenticationState.User;
         currentUser = user?.Identity?.Name;
-        var foundUser =  await userManager.FindByNameAsync(currentUser);
+        var foundUser = await userManager.FindByNameAsync(currentUser);
 
         UserContacts = foundUser?.Contacts;
     }
 
-    
+
 
 }
