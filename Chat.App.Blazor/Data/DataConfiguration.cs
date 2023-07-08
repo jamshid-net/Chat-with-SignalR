@@ -13,7 +13,8 @@ public static class DataConfiguration
         {
             options.UseLazyLoadingProxies();
             options.UseNpgsql(configuration.GetConnectionString("DbConnection"));
-        });
+        },contextLifetime: ServiceLifetime.Singleton);
+       
 
         services.AddDefaultIdentity<User>(options => options.SignIn.RequireConfirmedAccount = true)
           .AddRoles<IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();

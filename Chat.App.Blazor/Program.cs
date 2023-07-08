@@ -26,6 +26,20 @@ public class Program
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddMudServices(c => { c.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight; });
         builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+        builder.Services.ConfigureApplicationCookie(options =>
+        {
+            options.Cookie.HttpOnly = true;
+            options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+
+            options.LoginPath = "/Identity/Account/Login";
+            // options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+            options.SlidingExpiration = true;
+
+        });
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy("RoleBasedClaim", policy => policy.RequireClaim("Permission", "true"));
+        });
         builder.Services.AddResponseCompression(options =>
         {
             options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
@@ -45,8 +59,11 @@ public class Program
         app.UseHttpsRedirection();
 
         app.UseStaticFiles();
-
         app.UseRouting();
+
+        app.UseAuthentication();
+        app.UseAuthorization();
+
         app.MapBlazorHub();
         app.MapHub<ChatHub>("/chathub");
         app.MapFallbackToPage("/_Host");

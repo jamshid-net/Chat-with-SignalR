@@ -7,61 +7,74 @@
 @inject ICurrentUser currentUser;
 @inject UserManager<User> usermanager;
 @inject ApplicationDbContext appdbContext;
+
 @implements IAsyncDisposable
 
 @code {
     [Parameter]
     public string? userId { get; set; }
 
-    private List<ChatRoom> messages = new();
+
+    private IQueryable<ChatRoom> SendersMessage;
+    private IQueryable<ChatRoom> ReceiversMessage;
+
     protected EditContext editContext;
     private string UserName = string.Empty;
-    private bool UserIsFound = false;
+    private bool UserIsFound;
 
-    private ChatRoom chatModel;
     private HubConnection? hubConnection;
 
+
+
+    private User? CurrentSessionUser { get; set; }
+
+    private ChatRoom chatModel { get; set; } = new();
 
     protected async override Task OnInitializedAsync()
     {
         if (!string.IsNullOrEmpty(userId))
         {
-            try
-            {
-                var foundUser = await usermanager.FindByIdAsync(userId);
-                if (foundUser is not null)
-                {
-                    UserIsFound = true;
-                    UserName = foundUser.UserName;
-                    chatModel = new ChatRoom()
-                    {
-                        ChatRoomId = Guid.NewGuid(),
-                        SentTime = DateTime.Now,
-                        SenderId = currentUser.UserId,
-                        ReceiverId = foundUser.Id
-
-                    };
+            SendersMessage = appdbContext.ChatRooms
+            .Where(m => m.SenderId == CurrentSessionUser.Id && m.ReceiverId == userId)
+            .OrderBy(m => m.SentTime);
 
 
-                }
-            }
-            catch (Exception ex)
-            {
+            // Retrieve and order the receiver's messages
+            ReceiversMessage = appdbContext.ChatRooms
+                .Where(m => m.SenderId == userId && m.ReceiverId == CurrentSessionUser.Id)
+                .OrderBy(m => m.SentTime);
 
-                Console.WriteLine(ex.Message);
-            }
+            await CheckingUserAndCreatorChatMessage();
             hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
             .Build();
 
-            hubConnection.On<ChatRoom>("ReceiveMessage", chatroom =>
+            hubConnection.On<ChatRoom>("ReceiveMessage", async chatroom =>
             {
-                messages.Add(chatroom);
-                InvokeAsync(StateHasChanged);
+                if (chatroom.SenderId == CurrentSessionUser.Id)
+                    chatroom.SentTime = DateTime.Now;
+                chatroom.ChatRoomId = Guid.NewGuid();
+                if (!string.IsNullOrEmpty(chatroom.Content))
+                {
+                await appdbContext.ChatRooms.AddAsync(chatroom);
+                await appdbContext.SaveChangesAsync();
+                    
+                }
+                
+                await InvokeAsync(StateHasChanged);
+
             });
             await hubConnection.StartAsync();
-            editContext = new EditContext(chatModel);
+            if (chatModel != null)
+            {
+                editContext = new EditContext(chatModel);
+            }
+
+
         }
+
+
+
     }
     private async Task Send(EditContext context)
     {
@@ -69,8 +82,32 @@
         if (hubConnection is not null)
         {
             await hubConnection.SendAsync("SendMessage", chatRoom);
-            chatModel.Content = string.Empty;
+            chatModel = new();
+            await CheckingUserAndCreatorChatMessage();
         }
+
+    }
+
+    
+    public async ValueTask CheckingUserAndCreatorChatMessage()
+    {
+
+        var foundUser = await usermanager.FindByIdAsync(userId);
+        CurrentSessionUser = await usermanager.FindByIdAsync(currentUser.UserId);
+
+        if (foundUser != null && CurrentSessionUser != null)
+        {
+            UserIsFound = true;
+            UserName = foundUser.UserName;
+            chatModel.SenderId = currentUser.UserId;
+            chatModel.ReceiverId = foundUser.Id;
+        }
+        else
+        {
+            UserIsFound = false;
+        }
+
+
     }
 
 
@@ -98,20 +135,32 @@
 
     <article class="content px-4">
 
-        <MudPaper Width="100%" class="resizable-container mb-2">
-            @foreach(var message in messages)
+
+
+        <MudPaper Width="100%" class="resizable-container mb-2" Elevation="0">
+
+            @foreach (var message in SendersMessage.Concat(ReceiversMessage).OrderBy(m => m.SentTime))
             {
-                <MudText Typo="Typo.h4">@message.Content</MudText>
-              
+                <div class="message p-1 row @(message.SenderId == currentUser.UserId ? "right mud-theme-primary" : "left mud-primary-text")">
+                    <div class="col">
+                        <div class="message-content">
+                            @message.Content
+                        </div>
+                        <div class="message-time">
+                            @message.SentTime.ToString("HH:mm")
+                        </div>
+                    </div>
+                </div>
             }
         </MudPaper>
+
 
         <MudPaper Height="110px" Width="100%">
             <MudContainer Fixed="true">
                 <EditForm Model="@chatModel" OnSubmit="Send">
                     <div class="d-flex flex-grow-1 gap-4">
 
-                        <MudTextField  @bind-Value="@chatModel.Content" Label="Message" Variant="Variant.Outlined"></MudTextField>
+                        <MudTextField @bind-Value="@chatModel.Content" Label="Message" Variant="Variant.Outlined"></MudTextField>
                         <MudButton Variant="Variant.Filled" Disabled="@(!IsConnected)" EndIcon="@Icons.Material.Filled.Send" ButtonType="ButtonType.Submit" Color="Color.Primary">Send</MudButton>
                     </div>
                 </EditForm>
